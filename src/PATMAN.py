@@ -2,7 +2,7 @@
 # @Author: Ben
 # @Date:   2017-03-03 22:23:44
 # @Last Modified by:   Ben
-# @Last Modified time: 2017-03-05 22:30:00
+# @Last Modified time: 2017-03-06 19:36:35
 import pygame
 import time
 
@@ -83,25 +83,13 @@ while running:
 
     key = pygame.key.get_pressed()
     if key[pygame.K_UP]:
-##        print(player.rect.y, walls[player.rect.y].rect.y)
-##        print(walls[player.rect[0]].rect[1])
-        print(walls[player.rect.y].rect.y)
-        print(player.rect.y)
-        if player.rect.y+10 != walls[player.rect.y].rect.y:
-##        print(walls[player.rect.x].rect)
-##        print(player.rect)
-            direction = 0
-        if player.rect.y+10 in walls:
-            direction = 0
+        direction = 0
     if key[pygame.K_DOWN]:
-        if player.rect.y-10 != walls[player.rect.x].rect.y:
-            direction = 1
+        direction = 1
     if key[pygame.K_LEFT]:
-        if player.rect.x-10 != walls[player.rect.x].rect.x:
-            direction = 2
+        direction = 2
     if key[pygame.K_RIGHT]:
-        if player.rect.x+10 != walls[player.rect.x].rect.x:
-            direction = 3
+        direction = 3
 
     if direction == 0:
         player.move(-10, 0)
@@ -114,12 +102,10 @@ while running:
         flipped = False
         player.move(0, 10)
 
-    ##print(player.rect.x, player.rect.y)
-
     screen.fill((0,0,0))
     for wall in walls:
         pygame.draw.rect(screen, (0, 0, 255), wall.rect)
-    # pygame.draw.rect(screen, (255, 200, 0), player.rect)
+
     if mouth_open:
         if flipped == True:
             screen.blit(patman_open_flipped, player.rect)
