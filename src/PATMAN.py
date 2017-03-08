@@ -2,19 +2,57 @@
 # @Author: Ben
 # @Date:   2017-03-03 22:23:44
 # @Last Modified by:   Ben
-# @Last Modified time: 2017-03-06 19:36:35
+# @Last Modified time: 2017-03-08 20:29:19
 import pygame
 import time
+import random
+import sys
+
+class Game:
+    def __init__(self):
+        self.points = 0
+
+    def check(self, player, ghosts):
+        if self.points == 401:
+            return False
+        for ghost in ghosts:
+            if player.rect.x == ghost.rect.x and player.rect.y == ghost.rect.y:
+                return False
+            elif player.rect.x+1 == ghost.rect.x and player.rect.y+1 == ghost.rect.y:
+                return False
+            elif player.rect.x-1 == ghost.rect.x and player.rect.y-1 == ghost.rect.y:
+                return False
+        return True
 
 class Player:
     def __init__(self, size):
         self.rect = pygame.Rect(20, 20, size, size)
 
-    def move(self, dy, dx):
+    def move(self, dy, dx, teleportcoords):
         if dx != 0:
             self.move_single_axis(dx, 0)
         if dy != 0:
             self.move_single_axis(0, dy)
+
+        try:
+            y = int(self.rect.y/10)
+        except:
+            y = int(self.rect.y)
+
+        try:
+            x = int(self.rect.x/10)
+        except:
+            x = int(self.rect.x)
+
+        if [x, y] in teleportcoords:
+            if teleportcoords.index([x, y]) == 0:
+                self.rect.x = (teleportcoords[1][0])*10
+                self.rect.y = (teleportcoords[1][1])*10
+                playerdirection = 2
+            elif teleportcoords.index([x, y]) == 1:
+                self.rect.x = (teleportcoords[0][0])*10
+                self.rect.y = (teleportcoords[0][1])*10
+                playerdirection = 3
 
     def move_single_axis(self, dx, dy):
         self.rect.x += dx
@@ -36,32 +74,104 @@ class Wall:
         walls.append(self)
         self.rect = pygame.Rect(pos[0], pos[1], 10, 10)
 
+class Point:
+    def __init__(self, pos):
+        points.append(pos)
+
+class Ghost:
+    def __init__(self, pos):
+        ghosts.append(self)
+        self.rect = pygame.Rect(pos[0], pos[1], 20, 20)
+        self.direction = 3
+        self.count = 0
+
+    def move(self, dy, dx, teleportcoords):
+        if dx != 0:
+            self.move_single_axis(dx, 0)
+        if dy != 0:
+            self.move_single_axis(0, dy)
+
+        try:
+            y = int(self.rect.y/10)
+        except:
+            y = int(self.rect.y)
+
+        try:
+            x = int(self.rect.x/10)
+        except:
+            x = int(self.rect.x)
+
+        if [x, y] in teleportcoords:
+            if teleportcoords.index([x, y]) == 0:
+                self.rect.x = (teleportcoords[1][0])*10
+                self.rect.y = (teleportcoords[1][1])*10
+                self.direction = 2
+            elif teleportcoords.index([x, y]) == 1:
+                self.rect.x = (teleportcoords[0][0])*10
+                self.rect.y = (teleportcoords[0][1])*10
+                self.direction = 3
+
+
+    def move_single_axis(self, dx, dy):
+        self.rect.x += dx
+        self.rect.y += dy
+
+        for wall in walls:
+            if self.rect.colliderect(wall.rect):
+                if dx > 0:
+                    self.rect.right = wall.rect.left
+                if dx < 0:
+                    self.rect.left = wall.rect.right
+                if dy > 0:
+                    self.rect.bottom = wall.rect.top
+                if dy < 0:
+                    self.rect.top = wall.rect.bottom
+                self.direction = random.randrange(0, 4)
+        self.count += 1
+        if self.count % random.randrange(2, 10) == 0:
+            self.direction = random.randrange(0, 4)
+
 pygame.init()
 pygame.display.set_caption("PATMAN")
 screen = pygame.display.set_mode((420, 420))
 
+game = Game()
+
 walls = []
+points = []
+ghosts = []
 size = 20
 player = Player(size)
 
 level = open("map.txt")
 
-
-
 x = y = 0
+teleportcoords = []
+
+xcount = ycount = 0
 
 for row in level:
     for col in row:
         if col == "W":
             Wall((x, y))
+        elif col == "T":
+            teleportcoords.append([xcount, ycount])
+        elif col == "P":
+            Point((x, y))
+        elif col == "G":
+            Ghost((x, y))
         x += 10
+        xcount += 1
+    xcount = 0
     y += 10
     x = 0
+    ycount += 1
 
 running = True
 
 # 0 = up, 1 = down, 2 = left, 3 = right
-direction = 3
+global playerdirection
+playerdirection = 3
 
 patman_closed = pygame.image.load('patman.png')
 patman_closed = pygame.transform.scale(patman_closed, (size, size))
@@ -71,40 +181,126 @@ patman_open = pygame.image.load('patman_open.png')
 patman_open = pygame.transform.scale(patman_open, (size, size))
 patman_open_flipped = pygame.transform.flip(patman_open, True, False)
 
+ghost_image = pygame.image.load('ghost.png')
+ghost_image = pygame.transform.scale(ghost_image, (size, size))
+
 mouth_open = False
 flipped = False
+
+scoreText = pygame.font.SysFont("monospace", 15)
+
+print(points)
 
 while running:
     for e in pygame.event.get():
         if e.type == pygame.QUIT:
-            running = False
-        if e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
+            pygame.display.quit()
+            pygame.quit()
+            sys.exit()
             running = False
 
     key = pygame.key.get_pressed()
-    if key[pygame.K_UP]:
-        direction = 0
-    if key[pygame.K_DOWN]:
-        direction = 1
-    if key[pygame.K_LEFT]:
-        direction = 2
-    if key[pygame.K_RIGHT]:
-        direction = 3
 
-    if direction == 0:
-        player.move(-10, 0)
-    if direction == 1:
-        player.move(10, 0)
-    if direction == 2:
+    if key[pygame.K_ESCAPE]:
+        pygame.display.quit()
+        pygame.quit()
+        sys.exit()
+        running = False
+
+    if key[pygame.K_UP]:
+        player.rect.y += -10
+        for wall in walls:
+            if player.rect.colliderect(wall.rect):
+                newplayerdirection = playerdirection
+                break
+            else:
+                newplayerdirection = 0
+
+        playerdirection = newplayerdirection
+        player.rect.y += +10
+
+    if key[pygame.K_DOWN]:
+        player.rect.y += +10
+        for wall in walls:
+            if player.rect.colliderect(wall.rect):
+                newplayerdirection = playerdirection
+                break
+            else:
+                newplayerdirection = 1
+
+        playerdirection = newplayerdirection
+        player.rect.y += -10
+
+    if key[pygame.K_LEFT]:
+        player.rect.x += -10
+        for wall in walls:
+            if player.rect.colliderect(wall.rect):
+                newplayerdirection = playerdirection
+                break
+            else:
+                newplayerdirection = 2
+
+        playerdirection = newplayerdirection
+        player.rect.x += +10
+
+    if key[pygame.K_RIGHT]:
+        player.rect.x += +10
+        for wall in walls:
+            if player.rect.colliderect(wall.rect):
+                newplayerdirection = playerdirection
+                break
+            else:
+                newplayerdirection = 3
+
+        playerdirection = newplayerdirection
+        player.rect.x += -10
+
+    if playerdirection == 0:
+        player.move(-10, 0, teleportcoords)
+    if playerdirection == 1:
+        player.move(10, 0, teleportcoords)
+    if playerdirection == 2:
         flipped = True
-        player.move(0, -10)
-    if direction == 3:
+        player.move(0, -10, teleportcoords)
+    if playerdirection == 3:
         flipped = False
-        player.move(0, 10)
+        player.move(0, 10, teleportcoords)  
+
+    for ghost in ghosts:
+        if ghost.direction == 0:
+            ghost.move(-10, 0, teleportcoords)
+        if ghost.direction == 1:
+            ghost.move(10, 0, teleportcoords)
+        if ghost.direction == 2:
+            ghost.move(0, -10, teleportcoords)
+        if ghost.direction == 3:
+            ghost.move(0, 10, teleportcoords)
+
+    running = game.check(player, ghosts)
 
     screen.fill((0,0,0))
     for wall in walls:
         pygame.draw.rect(screen, (0, 0, 255), wall.rect)
+
+    i = 0
+
+    for point in points:
+        #print('Point:', point)
+        #print('Player:', player.rect.center)
+        if player.rect.x == point[0]-10 and player.rect.y == point[1]-10:
+            print(point)
+            points.pop(i)
+            game.points += 1
+            print(game.points)
+        else:
+            pygame.draw.circle(screen, (255, 255, 255), point, 2)
+        i += 1
+
+    for ghost in ghosts:
+        screen.blit(ghost_image, ghost.rect)
+
+    labelScore = scoreText.render("Score: " + str(game.points), 1, (0,0,0))
+    screen.blit(labelScore, (0, -4))
 
     if mouth_open:
         if flipped == True:
@@ -120,4 +316,4 @@ while running:
         mouth_open = True
     pygame.display.flip()
 
-    time.sleep(0.15)
+    time.sleep(0.075)
